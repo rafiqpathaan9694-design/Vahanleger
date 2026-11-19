@@ -1,0 +1,116 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isValidOptionalString(data, field, maxLen) {
+      return !(field in data) || (data[field] is string && data[field].size() <= maxLen);
+    }
+
+    function isValidUserProfile(data, userId) {
+      return data.keys().hasAll(['uid', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['uid', 'phoneNumber', 'displayName', 'email', 'createdAt', 'updatedAt']) &&
+        data.uid is string && data.uid == userId && data.uid == request.auth.uid && data.uid.size() <= 128 &&
+        isValidOptionalString(data, 'phoneNumber', 24) &&
+        isValidOptionalString(data, 'displayName', 120) &&
+        isValidOptionalString(data, 'email', 160) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidVehicleRecord(data, vehicleId) {
+      return data.keys().hasAll([
+          'id', 'ownerId', 'vehicleNumber', 'customerName', 'bankName',
+          'partnerCount', 'partners', 'dateTime', 'mediaAttachments',
+          'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'ownerId', 'vehicleNumber', 'customerName', 'customerPhone',
+          'bankName', 'notes', 'partnerCount', 'partners', 'dateTime',
+          'mediaAttachments', 'createdAt', 'updatedAt'
+        ]) &&
+        data.id is string && data.id == vehicleId && isValidId(data.id) &&
+        data.ownerId is string && data.ownerId == request.auth.uid && data.ownerId.size() <= 128 &&
+        data.vehicleNumber is string && data.vehicleNumber.size() >= 2 && data.vehicleNumber.size() <= 32 &&
+        data.customerName is string && data.customerName.size() >= 1 && data.customerName.size() <= 120 &&
+        isValidOptionalString(data, 'customerPhone', 24) &&
+        data.bankName is string && data.bankName.size() >= 1 && data.bankName.size() <= 100 &&
+        isValidOptionalString(data, 'notes', 1000) &&
+        data.partnerCount is int && data.partnerCount >= 1 && data.partnerCount <= 10 &&
+        data.partners is list && data.partners.size() >= 1 && data.partners.size() <= 10 &&
+        data.partners.size() == data.partnerCount &&
+        data.partners[0] is map &&
+        data.dateTime is string && data.dateTime.size() >= 10 && data.dateTime.size() <= 32 &&
+        data.mediaAttachments is list && data.mediaAttachments.size() <= 20 &&
+        (data.mediaAttachments.size() == 0 || data.mediaAttachments[0] is map) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    match /users/{userId} {
+      allow get: if isVerifiedUser() && isValidId(userId) && request.auth.uid == userId;
+      allow list: if false;
+      allow create: if isVerifiedUser() &&
+        isValidId(userId) &&
+        request.auth.uid == userId &&
+        isValidUserProfile(incoming(), userId) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser() &&
+        isValidId(userId) &&
+        request.auth.uid == userId &&
+        isValidUserProfile(incoming(), userId) &&
+        incoming().uid == existing().uid &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['phoneNumber', 'displayName', 'email', 'updatedAt']);
+      allow delete: if false;
+    }
+
+    match /vehicles/{vehicleId} {
+      allow get: if isVerifiedUser() && isValidId(vehicleId) && existing().ownerId == request.auth.uid;
+      allow list: if isVerifiedUser() && existing().ownerId == request.auth.uid;
+      allow create: if isVerifiedUser() &&
+        isValidId(vehicleId) &&
+        isValidVehicleRecord(incoming(), vehicleId) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser() &&
+        isValidId(vehicleId) &&
+        existing().ownerId == request.auth.uid &&
+        isValidVehicleRecord(incoming(), vehicleId) &&
+        incoming().id == existing().id &&
+        incoming().ownerId == existing().ownerId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'vehicleNumber', 'customerName', 'customerPhone', 'bankName',
+          'notes', 'partnerCount', 'partners', 'dateTime', 'mediaAttachments', 'updatedAt'
+        ]);
+      allow delete: if isVerifiedUser() && isValidId(vehicleId) && existing().ownerId == request.auth.uid;
+    }
+  }
+}

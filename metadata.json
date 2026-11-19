@@ -1,0 +1,6 @@
+{
+  "name": "VahanLedger",
+  "description": "Vehicle finance, joint ownership shareholding, and media record manager.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

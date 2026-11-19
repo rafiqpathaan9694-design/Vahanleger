@@ -1,0 +1,141 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Private user account profile linked to Firebase Auth UID and verified mobile number or email.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Firebase Auth UID",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "phoneNumber": {
+          "type": "string",
+          "description": "Verified mobile number in E.164 format",
+          "maxLength": 24
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Display name of the user",
+          "maxLength": 120
+        },
+        "email": {
+          "type": "string",
+          "description": "Email address if signed in with Google",
+          "maxLength": 160
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server last update timestamp"
+        }
+      },
+      "required": ["uid", "createdAt", "updatedAt"]
+    },
+    "VehicleRecord": {
+      "title": "VehicleRecord",
+      "description": "A vehicle finance, joint ownership shareholding, and media record owned by an authenticated user.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Document ID",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerId": {
+          "type": "string",
+          "description": "Authenticated user UID who owns this record",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "vehicleNumber": {
+          "type": "string",
+          "description": "Uppercase vehicle registration number",
+          "minLength": 2,
+          "maxLength": 32
+        },
+        "customerName": {
+          "type": "string",
+          "description": "Primary customer full name",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "customerPhone": {
+          "type": "string",
+          "description": "Optional customer mobile number",
+          "maxLength": 24
+        },
+        "bankName": {
+          "type": "string",
+          "description": "Financed bank or NBFC name",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "notes": {
+          "type": "string",
+          "description": "Optional loan or dealer remarks",
+          "maxLength": 1000
+        },
+        "partnerCount": {
+          "type": "integer",
+          "description": "Number of joint shareholders (1 to 10)"
+        },
+        "partners": {
+          "type": "array",
+          "description": "Bounded list (1 to 10) of partner objects with id, name, and percentage"
+        },
+        "dateTime": {
+          "type": "string",
+          "description": "Local ISO date-time string for the entry",
+          "minLength": 10,
+          "maxLength": 32
+        },
+        "mediaAttachments": {
+          "type": "array",
+          "description": "Bounded list (up to 20) of server-hosted photo/video metadata objects"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server last update timestamp"
+        }
+      },
+      "required": [
+        "id",
+        "ownerId",
+        "vehicleNumber",
+        "customerName",
+        "bankName",
+        "partnerCount",
+        "partners",
+        "dateTime",
+        "mediaAttachments",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Private user profile documents strictly scoped to the authenticated user."
+    },
+    "/vehicles/{vehicleId}": {
+      "schema": { "$ref": "#/entities/VehicleRecord" },
+      "description": "User-owned vehicle finance, partnership, and server media reference records."
+    }
+  }
+}
